@@ -10,7 +10,7 @@ public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    private long id;
 
     public User() {
     }
@@ -33,7 +33,7 @@ public class User {
     }
 
 
-    public int getId() {
+    public long getId() {
         return id;
     }
 
