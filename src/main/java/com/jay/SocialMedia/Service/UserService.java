@@ -21,6 +21,7 @@ public class UserService {
         User user = new User();
         user.setName(userDTO.getName());
         user.setEmail(userDTO.getEmail());
+        user.setPassword(userDTO.getPassword()); // ✅ ADD THIS
 
         User savedUser = userRepository.save(user);
 
@@ -51,6 +52,23 @@ public class UserService {
                 updatedUser.getId(),
                 updatedUser.getName(),
                 updatedUser.getEmail()
+        );
+    }
+
+    public UserDTO login(UserDTO userDTO){
+
+        User user = userRepository.findByEmail(userDTO.getEmail())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getPassword() == null ||
+                !userDTO.getPassword().equals(user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        return new UserDTO(
+                user.getId(),
+                user.getName(),
+                user.getEmail()
         );
     }
 
