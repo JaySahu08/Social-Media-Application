@@ -1,23 +1,13 @@
 package com.jay.SocialMedia.DTO;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-
 public class UserDTO {
 
     private Long id;
-
-//    @NotBlank(message = "Name cannot be empty")
     private String name;
-
-    @Email(message = "Invalid email format")
-    @NotBlank(message = "Email cannot be empty")
     private String email;
 
-    @NotBlank(message = "Password cannot be empty")
-    private String password;
-
-    public UserDTO() {}
+    public UserDTO() {
+    }
 
     public UserDTO(Long id, String name, String email) {
         this.id = id;
@@ -25,17 +15,27 @@ public class UserDTO {
         this.email = email;
     }
 
-    // getters & setters
+    public Long getId() {
+        return id;
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getName() {
+        return name;
+    }
 
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
+    public void setName(String name) {
+        this.name = name;
+    }
 
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
 }
