@@ -45,6 +45,11 @@ public class PostService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public boolean hasPosts() {
+        return postRepository.count() > 0;
+    }
+
     @Transactional
     public PostDTO createPost(CreatePostRequest request) {
         User author = userService.getExistingUser(request.getUserId());
@@ -98,10 +103,11 @@ public class PostService {
     }
 
     private PostDTO toDto(Post post) {
-        List<CommentDTO> comments = post.getComments()
+        List<CommentDTO> comments = postCommentRepository.findByPostOrderByCreatedAtAsc(post)
                 .stream()
                 .map(this::toCommentDto)
                 .toList();
+        int likeCount = Math.toIntExact(postLikeRepository.countByPost(post));
 
         return new PostDTO(
                 post.getId(),
@@ -111,7 +117,7 @@ public class PostService {
                 post.getAuthor().getId(),
                 post.getAuthor().getName(),
                 post.getCreatedAt(),
-                post.getLikes().size(),
+                likeCount,
                 comments
         );
     }

@@ -1,6 +1,11 @@
 package com.jay.SocialMedia;
 
+import com.jay.SocialMedia.DTO.PostDTO;
 import com.jay.SocialMedia.Entity.User;
+import com.jay.SocialMedia.Repository.ChatMessageRepository;
+import com.jay.SocialMedia.Repository.PostCommentRepository;
+import com.jay.SocialMedia.Repository.PostLikeRepository;
+import com.jay.SocialMedia.Repository.PostRepository;
 import com.jay.SocialMedia.Repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,13 +20,14 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.util.Map;
 
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,6 +40,18 @@ class SoicalMediaApplicationTests {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private ChatMessageRepository chatMessageRepository;
+
+    @Autowired
+    private PostCommentRepository postCommentRepository;
+
+    @Autowired
+    private PostLikeRepository postLikeRepository;
+
+    @Autowired
+    private PostRepository postRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -41,6 +59,10 @@ class SoicalMediaApplicationTests {
 
     @BeforeEach
     void setUp() {
+        chatMessageRepository.deleteAll();
+        postCommentRepository.deleteAll();
+        postLikeRepository.deleteAll();
+        postRepository.deleteAll();
         userRepository.deleteAll();
     }
 
@@ -119,7 +141,7 @@ class SoicalMediaApplicationTests {
 
         String payload = objectMapper.writeValueAsString(Map.of(
                 "name", "Another Ava",
-                "email", "ava@example.com",
+                "email", "AVA@example.com",
                 "password", "secret123"
         ));
 
@@ -128,6 +150,99 @@ class SoicalMediaApplicationTests {
                         .content(payload))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Email is already registered"));
+    }
+
+    @Test
+    void postCommentAndLikeFlowWorks() throws Exception {
+        User author = userRepository.save(new User("Ava", "ava@example.com", passwordEncoder.encode("secret123")));
+        User friend = userRepository.save(new User("Ben", "ben@example.com", passwordEncoder.encode("secret123")));
+
+        String postPayload = objectMapper.writeValueAsString(Map.of(
+                "content", "Hello from the API",
+                "userId", author.getId()
+        ));
+
+        MvcResult createPostResult = mockMvc.perform(post("/api/posts")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(postPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").value("Hello from the API"))
+                .andExpect(jsonPath("$.authorName").value("Ava"))
+                .andExpect(jsonPath("$.likeCount").value(0))
+                .andReturn();
+
+        PostDTO post = objectMapper.readValue(createPostResult.getResponse().getContentAsString(), PostDTO.class);
+
+        String likePayload = objectMapper.writeValueAsString(Map.of("userId", friend.getId()));
+
+        mockMvc.perform(post("/api/posts/{postId}/like", post.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(likePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likeCount").value(1));
+
+        mockMvc.perform(post("/api/posts/{postId}/like", post.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(likePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.likeCount").value(0));
+
+        String commentPayload = objectMapper.writeValueAsString(Map.of(
+                "text", "Nice post",
+                "userId", friend.getId()
+        ));
+
+        mockMvc.perform(post("/api/posts/{postId}/comments", post.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(commentPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.comments", hasSize(1)))
+                .andExpect(jsonPath("$.comments[0].text").value("Nice post"))
+                .andExpect(jsonPath("$.comments[0].authorName").value("Ben"));
+
+        mockMvc.perform(get("/api/posts"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(post.getId()))
+                .andExpect(jsonPath("$[0].comments", hasSize(1)));
+    }
+
+    @Test
+    void chatFlowWorksInBothDirections() throws Exception {
+        User ava = userRepository.save(new User("Ava", "ava@example.com", passwordEncoder.encode("secret123")));
+        User ben = userRepository.save(new User("Ben", "ben@example.com", passwordEncoder.encode("secret123")));
+
+        String firstMessagePayload = objectMapper.writeValueAsString(Map.of(
+                "text", "Hi Ben",
+                "senderId", ava.getId()
+        ));
+
+        mockMvc.perform(post("/api/chats/{friendId}/messages", ben.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(firstMessagePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value("Hi Ben"))
+                .andExpect(jsonPath("$.senderId").value(ava.getId()))
+                .andExpect(jsonPath("$.receiverId").value(ben.getId()));
+
+        String secondMessagePayload = objectMapper.writeValueAsString(Map.of(
+                "text", "Hi Ava",
+                "senderId", ben.getId()
+        ));
+
+        mockMvc.perform(post("/api/chats/{friendId}/messages", ava.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(secondMessagePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value("Hi Ava"))
+                .andExpect(jsonPath("$.senderId").value(ben.getId()))
+                .andExpect(jsonPath("$.receiverId").value(ava.getId()));
+
+        mockMvc.perform(get("/api/chats/{friendId}/messages", ben.getId())
+                        .param("currentUserId", ava.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].text").value("Hi Ben"))
+                .andExpect(jsonPath("$[1].text").value("Hi Ava"));
     }
 
     @Test

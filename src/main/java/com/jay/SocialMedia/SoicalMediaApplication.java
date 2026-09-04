@@ -5,6 +5,7 @@ import com.jay.SocialMedia.DTO.CreateUserRequest;
 import com.jay.SocialMedia.DTO.UserDTO;
 import com.jay.SocialMedia.Service.PostService;
 import com.jay.SocialMedia.Service.UserService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -17,26 +18,38 @@ public class SoicalMediaApplication {
 	}
 
 	@Bean
-	CommandLineRunner initData(UserService userService, PostService postService) {
+	CommandLineRunner initData(
+			@Value("${app.seed.enabled:true}") boolean seedEnabled,
+			UserService userService,
+			PostService postService
+	) {
 		return args -> {
+			if (!seedEnabled) {
+				return;
+			}
+
 			// Create Users
 			CreateUserRequest user1 = new CreateUserRequest();
 			user1.setName("Alice Johnson");
 			user1.setEmail("alice@example.com");
 			user1.setPassword("password123");
-			UserDTO alice = userService.saveUser(user1);
+			UserDTO alice = userService.getOrCreateUser(user1);
 
 			CreateUserRequest user2 = new CreateUserRequest();
 			user2.setName("Bob Smith");
 			user2.setEmail("bob@example.com");
 			user2.setPassword("password123");
-			UserDTO bob = userService.saveUser(user2);
+			UserDTO bob = userService.getOrCreateUser(user2);
 
 			CreateUserRequest user3 = new CreateUserRequest();
 			user3.setName("Charlie Brown");
 			user3.setEmail("charlie@example.com");
 			user3.setPassword("password123");
-			UserDTO charlie = userService.saveUser(user3);
+			UserDTO charlie = userService.getOrCreateUser(user3);
+
+			if (postService.hasPosts()) {
+				return;
+			}
 
 			// Create Posts
 			// 1. Text only

@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,14 +28,23 @@ public class UserService {
     }
 
     public UserDTO saveUser(CreateUserRequest request) {
-        ensureEmailIsAvailable(request.getEmail(), null);
+        String email = normalizeEmail(request.getEmail());
+        ensureEmailIsAvailable(email, null);
 
         User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
+        user.setName(normalizeName(request.getName()));
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         return toDto(userRepository.save(user));
+    }
+
+    public UserDTO getOrCreateUser(CreateUserRequest request) {
+        String email = normalizeEmail(request.getEmail());
+
+        return userRepository.findByEmail(email)
+                .map(this::toDto)
+                .orElseGet(() -> saveUser(request));
     }
 
     public List<UserDTO> getUsers() {
@@ -60,10 +70,11 @@ public class UserService {
 
     public UserDTO updateUser(Long id, UpdateUserRequest request) {
         User user = getExistingUser(id);
-        ensureEmailIsAvailable(request.getEmail(), id);
+        String email = normalizeEmail(request.getEmail());
+        ensureEmailIsAvailable(email, id);
 
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
+        user.setName(normalizeName(request.getName()));
+        user.setEmail(email);
 
         return toDto(userRepository.save(user));
     }
@@ -73,7 +84,7 @@ public class UserService {
     }
 
     public UserDTO login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+        User user = userRepository.findByEmail(normalizeEmail(request.getEmail()))
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
@@ -94,6 +105,14 @@ public class UserService {
                 .ifPresent(existingUser -> {
                     throw new DuplicateEmailException("Email is already registered");
                 });
+    }
+
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeName(String name) {
+        return name == null ? null : name.trim();
     }
 
     public UserDTO toDto(User user) {

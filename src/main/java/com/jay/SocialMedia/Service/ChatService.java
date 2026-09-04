@@ -6,6 +6,7 @@ import com.jay.SocialMedia.Entity.ChatMessage;
 import com.jay.SocialMedia.Entity.User;
 import com.jay.SocialMedia.Repository.ChatMessageRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class ChatService {
         this.userService = userService;
     }
 
+    @Transactional(readOnly = true)
     public List<ChatMessageDTO> getMessages(Long currentUserId, Long friendId) {
         User currentUser = userService.getExistingUser(currentUserId);
         User friend = userService.getExistingUser(friendId);
@@ -36,6 +38,7 @@ public class ChatService {
                 .toList();
     }
 
+    @Transactional
     public ChatMessageDTO sendMessage(Long friendId, SendMessageRequest request) {
         User sender = userService.getExistingUser(request.getSenderId());
         User receiver = userService.getExistingUser(friendId);
