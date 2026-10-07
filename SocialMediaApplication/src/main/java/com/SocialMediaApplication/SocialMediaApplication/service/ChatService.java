@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,13 +20,14 @@ public class ChatService {
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
 
+    @Transactional
     public Message saveMessage(String senderUsername, String receiverUsername, String content) {
         User sender = userRepository.findByUsername(senderUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("Sender not found"));
         User receiver = userRepository.findByUsername(receiverUsername)
                 .orElseThrow(() -> new ResourceNotFoundException("Receiver not found"));
 
-        if (!sender.getFriends().contains(receiver)) {
+        if (!messageRepository.areFriends(senderUsername, receiverUsername)) {
             throw new BadRequestException("You can only chat with friends");
         }
 
@@ -36,6 +38,7 @@ public class ChatService {
                 .build());
     }
 
+    @Transactional(readOnly = true)
     public List<ChatMessageDto> getConversation(String user1, String user2) {
         return messageRepository.findConversation(user1, user2)
                 .stream()
