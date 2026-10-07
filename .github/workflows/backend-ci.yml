@@ -1,0 +1,24 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven' # This caches dependencies to speed up builds [citation:3]
+
+      - name: Build and run tests
+        run: ./mvnw clean verify -DskipTests=false # Runs tests, fails build if any test fails [citation:3]
