@@ -1,0 +1,12 @@
+node_modules/
+build/
+.git/
+.gitignore
+.idea/
+*.log
+.env
+.env.local
+.vercel/
+Dockerfile
+.dockerignore
+README.md
